@@ -36,6 +36,8 @@ int sensorPin = A0;
 int ledPin = 7;
 int sensorValue = -1;
 
+int teste = 10;
+
 SoftwareSerial mySerial(0, 1);
 
 Adafruit_GPS GPS(&mySerial);
@@ -190,7 +192,6 @@ if (! usingInterrupt) {
  Serial.println(sensorValue);
  // Send a message to rf95_server
  char radiopacket[5] = "liga";
- char radiopacket2[10] = "desliga";
   
  // Change the char to from ASCII to HEX(16) or DECI(10) value
  // itoa(packetnum++, radiopacket+13, 16);
@@ -198,7 +199,7 @@ if (! usingInterrupt) {
  radiopacket[4] = 0;
 
  Serial.println("Sending value..."); delay(10);
- rf95.send((uint8_t *)radiopacket, 5);
+ rf95.send((int)teste, 3);
  Serial.println("Waiting for packet to complete..."); delay(10);
  rf95.waitPacketSent();
  // Now wait for a reply
@@ -225,5 +226,7 @@ if (! usingInterrupt) {
  Serial.println("No reply, is there a listener around?");
  }
   
+ 
+ 
  delay(1000);
 }
