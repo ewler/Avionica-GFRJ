@@ -1,10 +1,13 @@
-/* Author: GFRJ
- * Date: 06/03/2018
- * Description: Code for "Transmitter" GPS location with LoRa.
+/* Author: Marissa Kwon
+ * Date: 2/28/2017
+ * Description: Code for "Transmitter" LoRa radio breakout; initilizes
+ * LoRa radio transmitter and sends data to LoRa receiver on the same
+ * frequency.
  *
  * This code originated from Adafruit's website and has been
- * adjusted for use in the Internet of rocket project.
- * GFRJ - Grupo de Foguetes do Rio de Janeiro
+ * adjusted for use in the Internet of Agriculture project.
+ * URSA Engage Student Research at OPEnS Lab at Oregon State
+University.
  */
 // LoRa 9x_TX
 // -*- mode: C++ -*-
@@ -18,52 +21,45 @@
 // It is designed to work with the other example LoRa9x_RX
 #include <SPI.h>
 #include <RH_RF95.h>
+
 #include <Adafruit_GPS.h>
 #include <SoftwareSerial.h>
 
 #define RFM95_CS 10
 #define RFM95_RST 9
 #define RFM95_INT 2
-
-#define GPSECHO  true
-
 //led, sensorPin, sensorValue
 // Change to 434.0 or other frequency, must match RX's freq!
 #define RF95_FREQ 433.0
 // Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
-int sensorPin = A0;
-int ledPin = 7;
-int sensorValue = -1;
 
-int teste = 10;
-
-SoftwareSerial mySerial(0, 1);
+SoftwareSerial mySerial(8, 7);
 
 Adafruit_GPS GPS(&mySerial);
 
-//bool ledON = false;
+#define GPSECHO  false
 
 boolean usingInterrupt = false;
-void useInterrupt(boolean); // Func prototype keeps Arduino 0023 happy
+void useInterrupt(boolean);
 
+float lat;
+char data[10];
+char lati[20];
 void setup()
 {
- //LED setup
- pinMode(ledPin, OUTPUT);
- digitalWrite(ledPin, LOW);
 
  //LoRa transmission
  pinMode(RFM95_RST, OUTPUT);
  digitalWrite(RFM95_RST, HIGH);
- 
- GPS.begin(9600);
- GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
- GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);   // 1 Hz update rate
- GPS.sendCommand(PGCMD_ANTENNA);
 
+ GPS.begin(9600);
+ 
  while (!Serial);
  Serial.begin(115200);
+ 
+ Serial.println("GFRJ - GPS LOCATION");
+ 
  delay(100);
  Serial.println("Arduino LoRa TX Test!");
  // manual reset
@@ -84,18 +80,26 @@ void setup()
  }
  Serial.print("Set Freq to: "); Serial.println(RF95_FREQ);
 
- // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5,
-//Sf = 128chips/symbol, CRC on
- // The default transmitter power is 13dBm, using PA_BOOST.
- // If you are using RFM95/96/97/98 modules which uses the PA_BOOST
-//transmitter pin, then
- // you can set transmitter powers from 5 to 23 dBm:
+ /* Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5,
+  Sf = 128chips/symbol, CRC on
+  The default transmitter power is 13dBm, using PA_BOOST.
+  If you are using RFM95/96/97/98 modules which uses the PA_BOOST
+  transmitter pin, then
+  you can set transmitter powers from 5 to 23 dBm:*/
  rf95.setTxPower(23, false);
+
  
+ GPS.begin(9600);
+ GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
+ GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);   // 1 Hz update rate
+ GPS.sendCommand(PGCMD_ANTENNA);
+
  useInterrupt(true);
+
  delay(1000);
+ // Ask for firmware version
  mySerial.println(PMTK_Q_RELEASE);
- 
+
 }
 
 SIGNAL(TIMER0_COMPA_vect) {
@@ -122,13 +126,16 @@ void useInterrupt(boolean v) {
     usingInterrupt = false;
   }
 }
+//conversao de float para char
+char* dtostrf ( double __val, signed char __width, unsigned char __prec, char* __s);
 
 uint32_t timer = millis();
 
 int16_t packetnum = 0; // packet counter, we increment per xmission
-
 void loop()
 {
+ Serial.println("Sending to rf95_server");
+ Serial.println( );
 
 if (! usingInterrupt) {
     // read data from the GPS in the 'main loop'
@@ -153,60 +160,36 @@ if (! usingInterrupt) {
   if (timer > millis())  timer = millis();
 
   // approximately every 2 seconds or so, print out the current stats
-  if (millis() - timer > 2000) { 
+  if (millis() - timer > 500) { 
     timer = millis(); // reset the timer
-    
-    Serial.print("\nTime: ");
-    Serial.print(GPS.hour, DEC); Serial.print(':');
-    Serial.print(GPS.minute, DEC); Serial.print(':');
-    Serial.print(GPS.seconds, DEC); Serial.print('.');
-    Serial.println(GPS.milliseconds);
-    Serial.print("Date: ");
-    Serial.print(GPS.day, DEC); Serial.print('/');
-    Serial.print(GPS.month, DEC); Serial.print("/20");
-    Serial.println(GPS.year, DEC);
+  
     Serial.print("Fix: "); Serial.print((int)GPS.fix);
-    Serial.print(" quality: "); Serial.println((int)GPS.fixquality); 
+    Serial.print(" Qualidade: "); Serial.println((int)GPS.fixquality); 
     if (GPS.fix) {
-      Serial.print("Location: ");
-      Serial.print(GPS.latitude, 4); Serial.print(GPS.lat);
-      Serial.print(", "); 
-      Serial.print(GPS.longitude, 4); Serial.println(GPS.lon);
-      Serial.print("Location (in degrees, works with Google Maps): ");
+      Serial.print("Local atual: ");
       Serial.print(GPS.latitudeDegrees, 4);
+      lat = GPS.latitudeDegrees;
+      char *lati = dtostrf(lat,8,4,data);
       Serial.print(", "); 
       Serial.println(GPS.longitudeDegrees, 4);
-      
-      Serial.print("Speed (knots): "); Serial.println(GPS.speed);
-      Serial.print("Angle: "); Serial.println(GPS.angle);
-      Serial.print("Altitude: "); Serial.println(GPS.altitude);
-      Serial.print("Satellites: "); Serial.println((int)GPS.satellites);
     }
   }
-  
- Serial.println("Sending to rf95_server");
- //MB1220 sensing ...
- Serial.println("Sensing....");
- sensorValue = analogRead(sensorPin);
- Serial.print("Value found: ");
- Serial.println(sensorValue);
- // Send a message to rf95_server
- char radiopacket[5] = "liga";
-  
+   
  // Change the char to from ASCII to HEX(16) or DECI(10) value
  // itoa(packetnum++, radiopacket+13, 16);
- Serial.print("Sending "); Serial.println(radiopacket);
- radiopacket[4] = 0;
+ 
+ Serial.print("Sending "); //Serial.println(radiopacket);
+ //lati[9] = 0;
 
  Serial.println("Sending value..."); delay(10);
- rf95.send((int)teste, 3);
- Serial.println("Waiting for packet to complete..."); delay(10);
- rf95.waitPacketSent();
+ rf95.send((uint8_t *)lati, 10);
+ //Serial.println("Waiting for packet to complete..."); delay(10);
+ //rf95.waitPacketSent();
  // Now wait for a reply
- uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
- uint8_t len = sizeof(buf);
- Serial.println("Waiting for reply..."); delay(10);
- if (rf95.waitAvailableTimeout(1000))
+ //uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
+ //uint8_t len = sizeof(buf);
+ //Serial.println("Waiting for reply..."); delay(10);
+/* if (rf95.waitAvailableTimeout(1000))
  {
  // Should be a reply message for us now
  if (rf95.recv(buf, &len))
@@ -224,8 +207,7 @@ if (! usingInterrupt) {
  else
  {
  Serial.println("No reply, is there a listener around?");
- }
-  
+ }*/
  
  
  delay(1000);
