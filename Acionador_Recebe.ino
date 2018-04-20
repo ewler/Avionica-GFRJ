@@ -89,7 +89,8 @@ void loop()
  
  valor = 0;
  valor_chave = 0;
- 
+
+ valor = digitalRead(botao);
  valor = digitalRead(botao);
 
   if(valor == 1){

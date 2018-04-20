@@ -34,7 +34,9 @@ int ledPin = 7;
 int sensorValue = -1;
 
 int valor = 0;
+int valor_chave = 0;
 int botao = 4;
+int chave = 7;
 char comando[3];
 char c = '0';
 
@@ -46,6 +48,7 @@ void setup()
  digitalWrite(RFM95_RST, HIGH);
 
  pinMode(botao, INPUT);
+ pinMode(chave, INPUT);
 
  while (!Serial);
  Serial.begin(9600);
@@ -84,23 +87,21 @@ void loop()
 {
  
  valor = 0;
+ valor_chave = 0;
  
  valor = digitalRead(botao);
 
- if(Serial.available() > 0)
-  c = Serial.read();
- 
- comando[0] = c;
- 
- if(comando[0] == '1'){
- 
-  if(valor == 1)
-    comando[1] = '1';
-  else
+  if(valor == 1){
+    comando[0] = '1';
+    if(valor_chave == 1)
+      comando[1] = '1';
+    else
+      comando[1] = '0';
+  }else{
+   comando[0] = '0';
    comando[1] = '0';
- } else{
-  comando[1] = '0';
- }
+  }
+  
  comando[2] = '\0';
  // Send a message to rf95_server
    
